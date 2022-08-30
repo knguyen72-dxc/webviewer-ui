@@ -19,6 +19,7 @@ import { isMobile, isIE } from 'helpers/device';
 import actions from 'actions';
 import selectors from 'selectors';
 import './Outline.scss';
+
 const propTypes = {
   outline: PropTypes.object.isRequired,
   moveOutlineInward: PropTypes.func.isRequired,
@@ -30,6 +31,7 @@ const propTypes = {
   isDraggedUpwards: PropTypes.bool,
   isDraggedDownwards: PropTypes.bool,
   outlineEditingEnabled: PropTypes.bool,
+  bookmark: PropTypes.any,
 };
 
 const Outline = forwardRef(
@@ -44,7 +46,9 @@ const Outline = forwardRef(
       connectDropTarget,
       moveOutlineInward,
       moveOutlineBeforeTarget,
-      moveOutlineAfterTarget
+      moveOutlineAfterTarget,
+      bookmark,
+      bookmarks
     },
     ref
   ) {
@@ -56,13 +60,14 @@ const Outline = forwardRef(
       setIsAddingNewOutline,
       isAddingNewOutline,
       updateOutlines,
-      addNewOutline,
+      addNewOutline
     } = useContext(OutlineContext);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [showHoverBackground, setShowHoverBackground] = useState(false);
     const dispatch = useDispatch();
     const [t] = useTranslation();
+    const [outlineStyle, setOutlineStyle] = useState({});
 
     const elementRef = useRef(null);
     connectDragSource(elementRef);
@@ -85,6 +90,8 @@ const Outline = forwardRef(
       ) {
         setIsExpanded(true);
       }
+
+      updateOutlineStyle();
     }, [selectedOutlinePath, isAddingNewOutline, outline]);
 
     useLayoutEffect(() => {
@@ -137,6 +144,32 @@ const Outline = forwardRef(
       updateOutlines();
     }
 
+    function updateOutlineStyle() {
+      
+      if (!bookmark) {
+        return;
+      }
+
+      let colorSpace = 255;
+      const bookmarkColor = bookmark ? bookmark.style.color : { r: 0, g: 0, b: 0 };
+      const bookmarkFlag = bookmark ? bookmark.style.flag : 0; // Defaul: normal
+
+      const fontWeight = (bookmarkFlag === 2 || bookmarkFlag === 3) ? 'bold' : 'normal';
+      const fontStyle = (bookmarkFlag === 1 || bookmarkFlag === 3) ? 'italic' : 'normal';
+
+      if (bookmarkColor.r > 1 || bookmarkColor.g > 1 || bookmarkColor.b > 1) {
+        colorSpace = 1;
+      }
+
+      const style = { 
+        color: `rgb(${[bookmarkColor.r * colorSpace, bookmarkColor.g * colorSpace, bookmarkColor.b * colorSpace]})`,
+        'font-weight': `${fontWeight}`,
+        'font-style': `${fontStyle}`
+      };
+      
+      setOutlineStyle(style);
+    }
+
     const isSelected = isOutlineSelected(outline);
 
     return (
@@ -177,6 +210,7 @@ const Outline = forwardRef(
                 useI18String={false}
                 onClick={handleOutlineClick}
                 tabIndex={-1}
+                style={outlineStyle}
               />
               <OutlineEditButton
                 outline={outline}
@@ -195,6 +229,8 @@ const Outline = forwardRef(
               moveOutlineInward={moveOutlineInward}
               moveOutlineBeforeTarget={moveOutlineBeforeTarget}
               moveOutlineAfterTarget={moveOutlineAfterTarget}
+              bookmarks={bookmarks}
+              bookmark={bookmarks? bookmarks[outlineUtils.getOutlineId(outline)]:null}
             />)
           }
           {isAddingNewOutline && isSelected && (

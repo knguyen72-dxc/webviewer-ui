@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useRef } from 'react';
+import React, { useState, useLayoutEffect, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { DndProvider } from 'react-dnd';
@@ -12,6 +12,7 @@ import Icon from 'components/Icon';
 import Button from 'components/Button';
 import OutlineTextInput from 'components/OutlineTextInput';
 import DataElementWrapper from 'components/DataElementWrapper';
+import Events from 'constants/events';
 
 import core from 'core';
 import outlineUtils from 'helpers/OutlineUtils';
@@ -24,6 +25,7 @@ import './OutlinesPanel.scss';
 
 function OutlinesPanel() {
   const isDisabled = useSelector(state => selectors.isElementDisabled(state, DataElements.OUTLINE_PANEL));
+  const isFullPDFEnabled = useSelector(state => selectors.isFullPDFEnabled(state));
   const outlines = useSelector(state => selectors.getOutlines(state));
   const outlineControlVisibility = useSelector(state => selectors.isOutlineControlVisible(state));
   const outlineEditingEnabled = useSelector(state => selectors.getIsOutlineEditing(state));
@@ -33,6 +35,7 @@ function OutlinesPanel() {
   const [t] = useTranslation();
   const dispatch = useDispatch();
   const nextPathRef = useRef(null);
+  const [bookmarks, setBookmarks] = useState({});
 
   // use layout effect to avoid flickering in the panel
   useLayoutEffect(() => {
@@ -43,6 +46,102 @@ function OutlinesPanel() {
       nextPathRef.current = null;
     }
   }, [outlines]);
+
+  useLayoutEffect(() => {
+
+    const updateOutlinePanel = async () => {
+      await getBookmarks();
+      reRenderPanel();
+    };
+
+    core.addEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
+
+    core.addEventListener(Events.DOCUMENT_LOADED, updateOutlinePanel);
+
+    updateOutlinePanel();
+
+    return () => {
+      core.removeEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
+
+      core.removeEventListener(Events.DOCUMENT_LOADED, updateOutlinePanel);
+    };
+  }, []);
+
+  function getBookmarkId(title, path) {
+    return `${path}-${title}`;
+  }
+
+  async function getBookmarks() {
+    if (!isFullPDFEnabled) {
+      return;
+    }
+
+    const doc = core.getDocument();
+    const pdfDoc = await doc.getPDFDoc();
+    const root = await pdfDoc.getFirstBookmark();
+    const queue = [];
+    const visited = {};
+    
+    // Add all the bookmarks in the first level to the queue
+    // This includes the root bookmark and all its siblings
+    let i = 0;
+    let curr = root;
+
+    while (await isValid(curr)) {
+      queue.push([curr, `${i}`]);
+      curr = await curr.getNext();
+      i++;
+    }
+
+    while (queue.length > 0) {
+      const node = queue.shift();
+      const [bookmark, path] = node;
+
+      const titleTask  = bookmark.getTitle();
+      const colorTask = bookmark.getColor();
+      // Bookmark's flag
+      // 1: italic
+      // 2: bold
+      // 0: normal
+      const flagTask = bookmark.getFlags();
+      const childrenTask = bookmark.hasChildren();
+
+      const results = await Promise.all([titleTask, colorTask, flagTask, childrenTask]);
+
+      const title = results[0];
+      const color = results[1];
+      const flag = results[2];
+      const hasChildren = results[3];
+      const bookmarkId = getBookmarkId(title, path);
+      
+      visited[bookmarkId] = {
+        name: title,
+        style : {
+          color,
+          flag
+        }
+      };
+
+      if (!hasChildren) {
+        continue;
+      }
+
+      let childIdx = 0;
+      let child = await bookmark.getFirstChild();
+      while (await isValid(child)) {
+        // The splitter should be the same as the splitter for OutlineId as '-'
+        queue.push([child, `${path}-${childIdx}`]);
+        child = await child.getNext();
+        childIdx++;
+      }
+    }
+
+    setBookmarks(visited);
+  }
+
+  async function isValid(pdfnetOutline) {
+    return pdfnetOutline && (await pdfnetOutline.isValid());
+  }
 
   const addNewOutline = async (e) => {
     const name = e.target.value;
@@ -131,6 +230,8 @@ function OutlinesPanel() {
                 moveOutlineInward={moveOutlineInward}
                 moveOutlineBeforeTarget={moveOutlineBeforeTarget}
                 moveOutlineAfterTarget={moveOutlineAfterTarget}
+                bookmark= {bookmarks ? bookmarks[outlineUtils.getOutlineId(outline)] : null}
+                bookmarks = {bookmarks ? bookmarks : null}
               />
             ))}
             {isAddingNewOutline && selectedOutlinePath === null && (
