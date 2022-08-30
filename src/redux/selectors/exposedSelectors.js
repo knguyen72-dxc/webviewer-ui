@@ -503,3 +503,6 @@ export const getNotesPanelCustomHeaderOptions = (state) => state.viewer.notesPan
 export const getNotesPanelCustomEmptyPanel = (state) => state.viewer.notesPanelCustomEmptyPanel;
 
 export const isReplyAttachmentPreviewEnabled = (state) => state.viewer.replyAttachmentPreviewEnabled;
+
+//FullAPI
+export const isFullPDFEnabled = (state) => state.advanced.fullAPI;

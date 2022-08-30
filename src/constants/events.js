@@ -63,6 +63,7 @@ export default {
   'LANGUAGE_CHANGED': 'languageChanged',
   'MULTI_VIEWER_READY': 'multiViewerReady',
   'COMPARE_ANNOTATIONS_LOADED': 'compareAnnotationsLoaded',
+  'FORCE_UPDATE_OUTLINES': 'forceUpdateOutlines',
 };
 
 /**

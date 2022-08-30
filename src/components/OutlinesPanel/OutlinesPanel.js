@@ -11,6 +11,7 @@ import OutlineContext from 'components/Outline/Context';
 import Button from 'components/Button';
 import OutlineContent from 'src/components/OutlineContent';
 import DataElementWrapper from 'components/DataElementWrapper';
+import Events from 'constants/events';
 
 import core from 'core';
 import outlineUtils from 'helpers/OutlineUtils';
@@ -32,6 +33,7 @@ const OutlinesPanel = () => {
     shouldAutoExpandOutlines,
     currentPage,
     pageLabels,
+    isFullPDFEnabled,
   ] = useSelector(
     (state) => [
       selectors.isElementDisabled(state, DataElements.OUTLINE_PANEL),
@@ -41,6 +43,7 @@ const OutlinesPanel = () => {
       selectors.shouldAutoExpandOutlines(state),
       selectors.getCurrentPage(state),
       selectors.getPageLabels(state),
+      selectors.isFullPDFEnabled(state),
     ],
     shallowEqual,
   );
@@ -65,6 +68,7 @@ const OutlinesPanel = () => {
   const nextPathRef = useRef(null);
   const TOOL_NAME = 'OutlineDestinationCreateTool';
   const tool = core.getTool(TOOL_NAME);
+  const [bookmarks, setBookmarks] = useState({});
 
   useLayoutEffect(() => {
     setAddingNewOutline(false);
@@ -79,6 +83,102 @@ const OutlinesPanel = () => {
       setMultiSelectMode(false);
     }
   }, [outlines]);
+
+  useLayoutEffect(() => {
+
+    const updateOutlinePanel = async () => {
+      await getBookmarks();
+      reRenderPanel();
+    };
+
+    core.addEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
+
+    core.addEventListener(Events.DOCUMENT_LOADED, updateOutlinePanel);
+
+    updateOutlinePanel();
+
+    return () => {
+      core.removeEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
+
+      core.removeEventListener(Events.DOCUMENT_LOADED, updateOutlinePanel);
+    };
+  }, []);
+
+  function getBookmarkId(title, path) {
+    return `${path}-${title}`;
+  }
+
+  async function getBookmarks() {
+    if (!isFullPDFEnabled) {
+      return;
+    }
+
+    const doc = core.getDocument();
+    const pdfDoc = await doc.getPDFDoc();
+    const root = await pdfDoc.getFirstBookmark();
+    const queue = [];
+    const visited = {};
+    
+    // Add all the bookmarks in the first level to the queue
+    // This includes the root bookmark and all its siblings
+    let i = 0;
+    let curr = root;
+
+    while (await isValid(curr)) {
+      queue.push([curr, `${i}`]);
+      curr = await curr.getNext();
+      i++;
+    }
+
+    while (queue.length > 0) {
+      const node = queue.shift();
+      const [bookmark, path] = node;
+
+      const titleTask  = bookmark.getTitle();
+      const colorTask = bookmark.getColor();
+      // Bookmark's flag
+      // 1: italic
+      // 2: bold
+      // 0: normal
+      const flagTask = bookmark.getFlags();
+      const childrenTask = bookmark.hasChildren();
+
+      const results = await Promise.all([titleTask, colorTask, flagTask, childrenTask]);
+
+      const title = results[0];
+      const color = results[1];
+      const flag = results[2];
+      const hasChildren = results[3];
+      const bookmarkId = getBookmarkId(title, path);
+      
+      visited[bookmarkId] = {
+        name: title,
+        style : {
+          color,
+          flag
+        }
+      };
+
+      if (!hasChildren) {
+        continue;
+      }
+
+      let childIdx = 0;
+      let child = await bookmark.getFirstChild();
+      while (await isValid(child)) {
+        // The splitter should be the same as the splitter for OutlineId as '-'
+        queue.push([child, `${path}-${childIdx}`]);
+        child = await child.getNext();
+        childIdx++;
+      }
+    }
+
+    setBookmarks(visited);
+  }
+
+  async function isValid(pdfnetOutline) {
+    return pdfnetOutline && (await pdfnetOutline.isValid());
+  }
 
   useEffect(() => {
     setOutlineEditable(core.isFullPDFEnabled() && outlineEditingEnabled);
@@ -310,6 +410,8 @@ const OutlinesPanel = () => {
                 moveOutlineInward={moveOutlineInward}
                 moveOutlineBeforeTarget={moveOutlineBeforeTarget}
                 moveOutlineAfterTarget={moveOutlineAfterTarget}
+                bookmark= {bookmarks ? bookmarks[outlineUtils.getOutlineId(outline)] : null}
+                bookmarks = {bookmarks ? bookmarks : null}
               />
             ))}
             {isAddingNewOutline && activeOutlinePath === null && (

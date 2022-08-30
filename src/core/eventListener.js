@@ -59,6 +59,7 @@ const getEventToObjectMap = (documentViewerKey = 1) => {
     pageNumberUpdated: documentViewer,
     pagesUpdated: documentViewer,
     'fitModeUpdated.fitbutton': documentViewer,
+    forceUpdateOutlines: documentViewer,
     historyChanged: historyManager,
     annotationSelected: annotManager,
     annotationChanged: annotManager,

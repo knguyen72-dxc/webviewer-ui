@@ -33,6 +33,8 @@ const propTypes = {
   isDragging: PropTypes.bool,
   isDraggedUpwards: PropTypes.bool,
   isDraggedDownwards: PropTypes.bool,
+  outlineEditingEnabled: PropTypes.bool,
+  bookmark: PropTypes.any,
 };
 
 const Outline = forwardRef(
@@ -48,7 +50,9 @@ const Outline = forwardRef(
       connectDropTarget,
       moveOutlineInward,
       moveOutlineBeforeTarget,
-      moveOutlineAfterTarget
+      moveOutlineAfterTarget,
+      bookmark,
+      bookmarks
     },
     ref
   ) {
@@ -65,6 +69,7 @@ const Outline = forwardRef(
       isOutlineEditable,
       selectedOutlines,
       updateOutlines,
+      addNewOutline
     } = useContext(OutlineContext);
 
     const outlinePath = outlineUtils.getPath(outline);
@@ -77,6 +82,8 @@ const Outline = forwardRef(
     const [clearSingleClick, setClearSingleClick] = useState(undefined);
 
     const dispatch = useDispatch();
+    const [t] = useTranslation();
+    const [outlineStyle, setOutlineStyle] = useState({});
 
     const elementRef = useRef(null);
     connectDragSource(elementRef);
@@ -95,7 +102,9 @@ const Outline = forwardRef(
       if (shouldExpandOutline) {
         setIsExpanded(true);
       }
-    }, [activeOutlinePath, isAddingNewOutline, outline]);
+
+      updateOutlineStyle();
+    }, [selectedOutlinePath, isAddingNewOutline, outline]);
 
     useLayoutEffect(() => {
       setIsExpanded(shouldAutoExpandOutlines);
@@ -131,6 +140,32 @@ const Outline = forwardRef(
         dispatch(actions.closeElement('leftPanel'));
       }
     }, [dispatch, setActiveOutlinePath, activeOutlinePath, isAddingNewOutline, outline]);
+
+    function updateOutlineStyle() {
+      
+      if (!bookmark) {
+        return;
+      }
+
+      let colorSpace = 255;
+      const bookmarkColor = bookmark ? bookmark.style.color : { r: 0, g: 0, b: 0 };
+      const bookmarkFlag = bookmark ? bookmark.style.flag : 0; // Defaul: normal
+
+      const fontWeight = (bookmarkFlag === 2 || bookmarkFlag === 3) ? 'bold' : 'normal';
+      const fontStyle = (bookmarkFlag === 1 || bookmarkFlag === 3) ? 'italic' : 'normal';
+
+      if (bookmarkColor.r > 1 || bookmarkColor.g > 1 || bookmarkColor.b > 1) {
+        colorSpace = 1;
+      }
+
+      const style = { 
+        color: `rgb(${[bookmarkColor.r * colorSpace, bookmarkColor.g * colorSpace, bookmarkColor.b * colorSpace]})`,
+        'font-weight': `${fontWeight}`,
+        'font-style': `${fontStyle}`
+      };
+      
+      setOutlineStyle(style);
+    }
 
     const isActive = isOutlineActive(outline);
 
@@ -185,12 +220,13 @@ const Outline = forwardRef(
           >
             {outline.getChildren().length > 0 &&
               <Button
-                img="icon-chevron-right"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleOutline();
-                }}
+                className="contentButton"
+                onDoubleClick={handleOutlineDoubleClick}
+                label={outline.getName()}
+                useI18String={false}
+                onClick={handleOutlineClick}
+                tabIndex={-1}
+                style={outlineStyle}
               />
             }
           </div>
@@ -217,6 +253,8 @@ const Outline = forwardRef(
               moveOutlineInward={moveOutlineInward}
               moveOutlineBeforeTarget={moveOutlineBeforeTarget}
               moveOutlineAfterTarget={moveOutlineAfterTarget}
+              bookmarks={bookmarks}
+              bookmark={bookmarks? bookmarks[outlineUtils.getOutlineId(outline)]:null}
             />
           ))
         }

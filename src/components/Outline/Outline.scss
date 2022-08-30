@@ -3,13 +3,12 @@
 .outline-drag-container {
   border-radius: 4px;
 
-  &.isNesting {
-    &>.bookmark-outline-single-container {
-      background-color: var(--popup-button-active);
-      border-color: var(--focus-border);
-    }
-  }
-}
+.Outline {
+  display: flex;
+  width: 100%;
+  flex-grow: 1;
+  flex-shrink: 0;
+  align-items: flex-start;
 
 .outline-treeview-toggle {
   flex-grow: 0;
@@ -22,9 +21,64 @@
     transform: rotate(90deg);
   }
 
-  .Button {
-    width: auto;
-    height: auto;
+      .Icon {
+        width: $arrow-size;
+        height: $arrow-size;
+      }
+    }
+
+    &:hover {
+      background: var(--outline-hover);
+    }
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    
+    &.editable {
+      flex-grow: 1;
+    }
+    
+    .row {
+      margin: 4px 0;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 0px 6px;
+
+      .Button {
+        width: auto;
+        height: auto;
+        text-align: left;
+      }
+
+      .contentButton {
+        flex-grow: 1;
+        justify-content: flex-start;
+        padding: 6px 0px;
+      }
+
+      .editOutlineButton {
+        display: flex;
+        flex-shrink: 0;
+        height: 15px;
+        width: 15px;
+        opacity: 0;
+        margin-left: 10px;
+        transition: opacity .15s ease;
+
+        @include mobile {
+          opacity: 1;
+          width: 20px;
+          height: 20px;
+        }
+
+        .Button {
+          padding: 2px;
+          width: 100%;
 
     .Icon {
       width: 14px;
