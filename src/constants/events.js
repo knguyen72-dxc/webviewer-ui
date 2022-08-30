@@ -58,6 +58,7 @@ export default {
   'TAB_DELETED': 'tabDeleted',
   'TAB_ADDED': 'tabAdded',
   'TAB_MOVED': 'tabMoved',
+  'FORCE_UPDATE_OUTLINES': 'forceUpdateOutlines'
 };
 
 /**
