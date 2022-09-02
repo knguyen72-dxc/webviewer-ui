@@ -51,7 +51,7 @@ function OutlinesPanel() {
 
     const updateOutlinePanel = async () => {
       await getBookmarks();
-      reRenderPanel();
+      updateOutlines();
     };
 
     core.addEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
