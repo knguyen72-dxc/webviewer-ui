@@ -69,7 +69,6 @@ const Outline = forwardRef(
       isOutlineEditable,
       selectedOutlines,
       updateOutlines,
-      addNewOutline
     } = useContext(OutlineContext);
 
     const outlinePath = outlineUtils.getPath(outline);
@@ -82,7 +81,6 @@ const Outline = forwardRef(
     const [clearSingleClick, setClearSingleClick] = useState(undefined);
 
     const dispatch = useDispatch();
-    const [t] = useTranslation();
     const [outlineStyle, setOutlineStyle] = useState({});
 
     const elementRef = useRef(null);
@@ -104,7 +102,7 @@ const Outline = forwardRef(
       }
 
       updateOutlineStyle();
-    }, [selectedOutlinePath, isAddingNewOutline, outline]);
+    }, [activeOutlinePath, isAddingNewOutline, outline]);
 
     useLayoutEffect(() => {
       setIsExpanded(shouldAutoExpandOutlines);
@@ -142,7 +140,6 @@ const Outline = forwardRef(
     }, [dispatch, setActiveOutlinePath, activeOutlinePath, isAddingNewOutline, outline]);
 
     function updateOutlineStyle() {
-      
       if (!bookmark) {
         return;
       }
@@ -158,12 +155,12 @@ const Outline = forwardRef(
         colorSpace = 1;
       }
 
-      const style = { 
+      const style = {
         color: `rgb(${[bookmarkColor.r * colorSpace, bookmarkColor.g * colorSpace, bookmarkColor.b * colorSpace]})`,
         'font-weight': `${fontWeight}`,
         'font-style': `${fontStyle}`
       };
-      
+
       setOutlineStyle(style);
     }
 
@@ -220,13 +217,20 @@ const Outline = forwardRef(
           >
             {outline.getChildren().length > 0 &&
               <Button
-                className="contentButton"
-                onDoubleClick={handleOutlineDoubleClick}
-                label={outline.getName()}
-                useI18String={false}
-                onClick={handleOutlineClick}
-                tabIndex={-1}
+                img="icon-chevron-right"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleOutline();
+                }}
                 style={outlineStyle}
+                // className="contentButton"
+                // onDoubleClick={handleOutlineDoubleClick}
+                // label={outline.getName()}
+                // useI18String={false}
+                // onClick={handleOutlineClick}
+                // tabIndex={-1}
+                // style={outlineStyle}
               />
             }
           </div>

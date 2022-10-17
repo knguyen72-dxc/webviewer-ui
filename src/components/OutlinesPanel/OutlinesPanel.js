@@ -33,7 +33,6 @@ const OutlinesPanel = () => {
     shouldAutoExpandOutlines,
     currentPage,
     pageLabels,
-    isFullPDFEnabled,
   ] = useSelector(
     (state) => [
       selectors.isElementDisabled(state, DataElements.OUTLINE_PANEL),
@@ -43,7 +42,6 @@ const OutlinesPanel = () => {
       selectors.shouldAutoExpandOutlines(state),
       selectors.getCurrentPage(state),
       selectors.getPageLabels(state),
-      selectors.isFullPDFEnabled(state),
     ],
     shallowEqual,
   );
@@ -84,18 +82,13 @@ const OutlinesPanel = () => {
     }
   }, [outlines]);
 
-  useLayoutEffect(() => {
-
-    const updateOutlinePanel = async () => {
-      await getBookmarks();
-      updateOutlines();
-    };
+  useLayoutEffect(async () => {
 
     core.addEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
 
     core.addEventListener(Events.DOCUMENT_LOADED, updateOutlinePanel);
 
-    updateOutlinePanel();
+    await updateOutlinePanel();
 
     return () => {
       core.removeEventListener(Events.FORCE_UPDATE_OUTLINES, updateOutlinePanel);
@@ -104,27 +97,33 @@ const OutlinesPanel = () => {
     };
   }, []);
 
-  function getBookmarkId(title, path) {
-    return `${path}-${title}`;
-  }
+  const updateOutlinePanel = async () => {
+    await getBookmarks();
+    updateOutlines();
+  };
 
-  async function getBookmarks() {
-    if (!isFullPDFEnabled) {
+  const getBookmarkId = (title, path) => {
+    return `${path}-${title}`;
+  };
+
+  const getBookmarks = async () => {
+    if (!core.isFullPDFEnabled()) {
+      console.warn('Full API must be enabled to display outline style.');
       return;
     }
 
-    const doc = core.getDocument();
+    const doc = core.getDocumentViewer().getDocument();
     const pdfDoc = await doc.getPDFDoc();
     const root = await pdfDoc.getFirstBookmark();
     const queue = [];
     const visited = {};
-    
+
     // Add all the bookmarks in the first level to the queue
     // This includes the root bookmark and all its siblings
     let i = 0;
     let curr = root;
 
-    while (await isValid(curr)) {
+    while (await outlineUtils.isValid(curr)) {
       queue.push([curr, `${i}`]);
       curr = await curr.getNext();
       i++;
@@ -150,7 +149,7 @@ const OutlinesPanel = () => {
       const flag = results[2];
       const hasChildren = results[3];
       const bookmarkId = getBookmarkId(title, path);
-      
+
       visited[bookmarkId] = {
         name: title,
         style : {
@@ -165,7 +164,7 @@ const OutlinesPanel = () => {
 
       let childIdx = 0;
       let child = await bookmark.getFirstChild();
-      while (await isValid(child)) {
+      while (await outlineUtils.isValid(child)) {
         // The splitter should be the same as the splitter for OutlineId as '-'
         queue.push([child, `${path}-${childIdx}`]);
         child = await child.getNext();
@@ -174,11 +173,7 @@ const OutlinesPanel = () => {
     }
 
     setBookmarks(visited);
-  }
-
-  async function isValid(pdfnetOutline) {
-    return pdfnetOutline && (await pdfnetOutline.isValid());
-  }
+  };
 
   useEffect(() => {
     setOutlineEditable(core.isFullPDFEnabled() && outlineEditingEnabled);
@@ -382,6 +377,9 @@ const OutlinesPanel = () => {
           renameOutline,
           updateOutlineDest,
           removeOutlines,
+          getBookmarks,
+          getBookmarkId,
+          updateOutlinePanel,
         }}
       >
         {outlineControlVisibility && <OutlineControls />}
