@@ -565,3 +565,5 @@ export const getCustomSettings = (state) => state.viewer.customSettings;
 export const isToolDefaultStyleUpdateFromAnnotationPopupEnabled = (state) => state.viewer.toolDefaultStyleUpdateFromAnnotationPopupEnabled;
 
 export const getShortcutKeyMap = (state) => state.viewer.shortcutKeyMap;
+
+export const isFullPDFEnabled = (state) => state.advanced.fullAPI;

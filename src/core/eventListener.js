@@ -86,5 +86,6 @@ const getEventToObjectMap = (documentViewerKey = 1) => {
     contentEditModeStarted: contentEditManager,
     contentEditModeEnded: contentEditManager,
     createAnnotationWithNoScale: measurementManager,
+    forceUpdateOutlines: window.documentViewer,
   };
 };
